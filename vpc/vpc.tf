@@ -1,3 +1,11 @@
+variable "AWS_VPC_SUBNET_CIDR"{}
+variable "AWS_VPC_PUBLIC_SUBNET_CIDR"{}
+variable "AWS_VPC_PRIVATE_SUBNET_CIDR"{}
+variable "availability_zones"{}
+variable "private_tag"{}
+variable "public_tag"{}
+
+
 # Internet VPC
 resource "aws_vpc" "test" {
     cidr_block = "${var.AWS_VPC_SUBNET_CIDR}"
