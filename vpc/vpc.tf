@@ -1,10 +1,11 @@
-variable "ENV" {}
+#variable "ENV" {}
 #variable "AWS_REGION" {}
 
 module "main-vpc" {
   source = "terraform-aws-modules/vpc/aws"
 
-  name = "vpc-${var.ENV}"
+  #name = "vpc-${var.ENV}"
+  name = "vpc-dev"
   cidr = "10.0.0.0/16"
 
   #azs             = ["${var.AWS_REGION}a", "${var.AWS_REGION}b"]
@@ -17,7 +18,7 @@ module "main-vpc" {
 
   tags = {
     Terraform   = "true"
-    Environment = "${var.ENV}"
+    #Environment = "${var.ENV}"
   }
 }
 
