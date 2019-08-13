@@ -1,110 +1,38 @@
-variable "AWS_VPC_SUBNET_CIDR" {}
-variable "AWS_VPC_PUBLIC_SUBNET_CIDR" {}
-variable "AWS_VPC_PRIVATE_SUBNET_CIDR" {}
-variable "availability_zones" {}
-variable "private_tag" {}
-variable "public_tag" {}
+variable "ENV" {}
+variable "AWS_REGION" {}
 
+module "main-vpc" {
+  source = "terraform-aws-modules/vpc/aws"
 
-# Internet VPC
-resource "aws_vpc" "test" {
-    cidr_block = "${var.AWS_VPC_SUBNET_CIDR}"
-    tags = {
+  name = "vpc-${var.ENV}"
+  cidr = "10.0.0.0/16"
+
+  azs             = ["${var.AWS_REGION}a", "${var.AWS_REGION}b"]
+  private_subnets = ["10.0.1.0/24", "10.0.2.0/24"]
+  public_subnets  = ["10.0.101.0/24", "10.0.102.0/24"]
+
+  enable_nat_gateway = false
+  enable_vpn_gateway = false
+
+  tags = {
     Terraform   = "true"
-    Name        = "test"
-    Environment = "test"
+    Environment = "${var.ENV}"
   }
 }
 
-# Private subnet
-resource "aws_subnet" "private" {
-  count = "${length(var.AWS_VPC_PRIVATE_SUBNET_CIDR)}"
-  vpc_id            = "${aws_vpc.test.id}"
-  cidr_block        = "${var.AWS_VPC_PRIVATE_SUBNET_CIDR[count.index]}"
-  availability_zone = "${var.availability_zones[count.index]}"
-tags = {
-    Terraform   = "true"
-    Name        = "${var.private_tag[count.index]}"
-    Environment = "test"
-  }
 
+output "vpc_id" {
+  description = "The ID of the VPC"
+  value       = "${module.main-vpc.vpc_id}"
 }
 
-#private subnet 
-
-resource "aws_subnet" "public" {
-  count = "${length(var.AWS_VPC_PUBLIC_SUBNET_CIDR)}"
-  vpc_id            = "${aws_vpc.test.id}"
-  cidr_block        = "${var.AWS_VPC_PUBLIC_SUBNET_CIDR[count.index]}"
-  availability_zone = "${var.availability_zones[count.index]}"
-tags = {
-    Terraform   = "true"
-    Name        = "${var.public_tag[count.index]}"
-    Environment = "test"
-  }
-
+output "private_subnets" {
+  description = "List of IDs of private subnets"
+  value       = ["${module.main-vpc.private_subnets}"]
 }
 
-# Internet gateway
-resource "aws_internet_gateway" "test-gw" {
-    vpc_id = "${aws_vpc.test.id}"
-
-tags = {
-    Terraform   = "true"
-    Name        = "test-gw"
-    Environment = "test"
-  }
+output "public_subnets" {
+  description = "List of IDs of public subnets"
+  value       = module.main-vpc.public_subnets
 }
 
-#private-route-table and route
-resource "aws_route_table" "private-route" {
-  count = "${length(var.AWS_VPC_PRIVATE_SUBNET_CIDR)}"
-  vpc_id = "${aws_vpc.test.id}"
-tags = {
-    Terraform   = "true"
-    Name        = "${var.private_tag[count.index]}"
-    Environment = "test"
-  }
-}
-
-resource "aws_route" "private" {
-  count = "${length(var.AWS_VPC_PRIVATE_SUBNET_CIDR)}"
-  route_table_id         = "${aws_route_table.private-route.*.id[count.index]}"
-  destination_cidr_block = "0.0.0.0/0"
-  #nat_gateway_id         = "${aws_nat_gateway.default.*.id[count.index]}"
-  instance_id           = "${aws_instance.test.*.id[count.index]}"
-}
-
-#Public-route-table and route
-resource "aws_route_table" "public-route" {
-  count = "${length(var.AWS_VPC_PUBLIC_SUBNET_CIDR)}"
-  vpc_id = "${aws_vpc.test.id}"
-tags = {
-    Terraform   = "true"
-    Name        = "${var.public_tag[count.index]}"
-    Environment = "test"
-  }
-}
-
-resource "aws_route" "public" {
-  count = "${length(var.AWS_VPC_PUBLIC_SUBNET_CIDR)}"
-  route_table_id         = "${aws_route_table.public-route.*.id[count.index]}"
-  destination_cidr_block = "0.0.0.0/0"
-  gateway_id             = "${aws_internet_gateway.test-gw.id}"
-}
-
-#Private-route-table-association
-
-resource "aws_route_table_association" "private" {
-  count = "${length(var.AWS_VPC_PRIVATE_SUBNET_CIDR)}"
-  subnet_id      = "${aws_subnet.private.*.id[count.index]}"
-  route_table_id = "${aws_route_table.private-route.*.id[count.index]}"
-}
-
-#public-route-table-association
-
-resource "aws_route_table_association" "public" {
-  count = "${length(var.AWS_VPC_PUBLIC_SUBNET_CIDR)}"
-  subnet_id      = "${aws_subnet.public.*.id[count.index]}"
-  route_table_id = "${aws_route_table.public-route.*.id[count.index]}"
-}
